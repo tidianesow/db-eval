@@ -1,18 +1,20 @@
 const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 const Submission = require('../models/Submission');
 const router = express.Router();
 
 // 📌 Soumettre un exercice (Étudiant) - Protégé par authMiddleware
-router.post('/', authMiddleware, async (req, res) => {
+// 📌 Seuls les étudiants peuvent soumettre un devoir
+router.post('/', authMiddleware, roleMiddleware(['etudiant']), async (req, res) => {
   try {
-    const { exerciseId, fileUrl } = req.body;
-    const studentId = req.user.id; // Récupérer l'ID de l'utilisateur connecté depuis le token
+      const { exerciseId, fileUrl } = req.body;
+      const studentId = req.user.id;
 
-    const submission = await Submission.create({ studentId, exerciseId, fileUrl });
-    res.status(201).json({ message: 'Soumission réussie', submission });
+      const submission = await Submission.create({ studentId, exerciseId, fileUrl });
+      res.status(201).json({ message: 'Soumission réussie', submission });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error.message });
   }
 });
 
