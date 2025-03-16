@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evalai
+  labels:
+    app: evalai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: evalai
+  template:
+    metadata:
+      labels:
+        app: evalai
+    spec:
+      containers:
+      - name: evalai
+        image: evalai:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: database-url
+        - name: NEXTAUTH_URL
+          value: "https://evalai.example.com"
+        - name: NEXTAUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: nextauth-secret
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: google-client-id
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: google-client-secret
+        - name: GITHUB_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: github-client-id
+        - name: GITHUB_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: github-client-secret
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: aws-secret-access-key
+        - name: AWS_REGION
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: aws-region
+        - name: AWS_BUCKET_NAME
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: aws-bucket-name
+        - name: FILE_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: evalai-secrets
+              key: file-encryption-key
+        - name: UPLOAD_DIR
+          value: "/app/uploads"
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: evalai-uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evalai
+spec:
+  selector:
+    app: evalai
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: evalai-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - evalai.example.com
+    secretName: evalai-tls
+  rules:
+  - host: evalai.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: evalai
+            port:
+              number: 80
+
